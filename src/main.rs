@@ -33,11 +33,10 @@ struct StartRequest {
 
 impl StartRequest {
     fn start(&self) -> String {
-        let password_str = format!("sv_port {}; password {}; sv_map {}", self.port, self.password, self.map_name);
+        let str = format!("sv_port {}; password {}; sv_map {}", self.port, self.password, self.map_name);
 
         let child = Command::new("./DDnet-Server")
-        .current_dir("/mnt/d/ddnet-team-searcher/ddnet-server")
-        .args([&password_str, "-f", &self.config_file])
+        .args([&str, "-f", &self.config_file])
         .stdout(process::Stdio::null())
         .stderr(process::Stdio::null())
         .spawn()
