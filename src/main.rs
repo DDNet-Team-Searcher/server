@@ -78,6 +78,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
 
         // connected
-        proccess(socket).await;
+        tokio::spawn(async {
+            proccess(socket).await;
+        });
     }
 }
