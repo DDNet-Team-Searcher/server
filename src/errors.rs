@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 
 use serde::{Deserialize, Serialize};
 
@@ -26,6 +26,14 @@ impl Display for Errors {
         };
 
         write!(f, "{}", serde_json::to_string(&res).unwrap()).unwrap();
+
+        Ok(())
+    }
+}
+
+impl Debug for Errors {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_string()).unwrap();
 
         Ok(())
     }

@@ -454,6 +454,7 @@ name = "ddnet_hander_server"
 version = "0.1.0"
 dependencies = [
  "cargo-watch",
+ "rand",
  "serde",
  "serde_json",
  "tokio",

@@ -9,6 +9,7 @@ edition = "2021"
 serde_json = "1.0.91"
 serde = { version = "1.0.152", features = ["derive"] }
 tokio = { version = "1.28.2", features = ["full"] }
+rand = "0.8.5"
 
 [dev-dependencies]
 cargo-watch = "8.4.0"
