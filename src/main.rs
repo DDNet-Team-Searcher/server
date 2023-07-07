@@ -3,12 +3,11 @@ mod servers_handler;
 mod shutdown;
 mod start;
 
-use std::sync::Arc;
-
 use serde::{Deserialize, Serialize};
 use serde_json;
 use shutdown::{Shutdown, ShutdownSuccess};
 use start::{Start, StartSuccess};
+use std::sync::Arc;
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, TcpStream},
@@ -29,14 +28,22 @@ async fn proccess(mut socket: TcpStream, game_servers_handler: Arc<Mutex<GameSer
         let mut buf_reader = BufReader::new(&mut socket);
         let mut line = String::new();
 
-        buf_reader.read_line(&mut line).await.unwrap();
+        if let Err(_) = buf_reader.read_line(&mut line).await {
+            println!("Get you wrongly encoded ass outta here");
+            continue;
+        }
+
+        if line.as_bytes().len() == 0 {
+            // disconnected
+            break;
+        }
 
         let request: serde_json::Result<Request> = serde_json::from_str(&line);
         let mut da_thing = game_servers_handler.lock().await;
 
         match request {
             Ok(data) => {
-                let mut res: String = String::new();
+                let res: String;
 
                 match data {
                     Request::StartRequest(data) => {
@@ -54,6 +61,8 @@ async fn proccess(mut socket: TcpStream, game_servers_handler: Arc<Mutex<GameSer
                                     res = err.to_string();
                                 }
                             }
+                        } else {
+                            res = Errors::BadData.to_string();
                         }
                     }
                     Request::ShutdownRequest(data) => {
@@ -69,6 +78,8 @@ async fn proccess(mut socket: TcpStream, game_servers_handler: Arc<Mutex<GameSer
                                     res = err.to_string();
                                 }
                             };
+                        } else {
+                            res = Errors::BadData.to_string();
                         }
                     }
                 }
@@ -81,11 +92,6 @@ async fn proccess(mut socket: TcpStream, game_servers_handler: Arc<Mutex<GameSer
                     .await
                     .unwrap();
             }
-        }
-
-        if line.as_bytes().len() == 0 {
-            // disconnected
-            break;
         }
     }
 }
