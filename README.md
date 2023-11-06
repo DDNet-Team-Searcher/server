@@ -6,7 +6,7 @@ To build this shit you would need a tool called protoc. If you are true gentoo g
 
     emerge --ask dev-libs/protobuf
 
-or if you are normie who uses ubuntu
+or if you are a normie who uses ubuntu
 
     apt install protobuf-compiler
 and then you can run as any other rust program
