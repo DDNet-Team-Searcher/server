@@ -1,11 +1,12 @@
-# Script for something
+# DDTS Rust Server
+Basically... i send requests here from the website. And then this thing handles ddnet servers
 
-This script works bad as fuck but at least it works.
+## Info
+To build this shit you would need a tool called protoc. If you are true gentoo gigachaf, run
 
-## Build
+    emerge --ask dev-libs/protobuf
 
-```bash
-cargo build --release
-```
+or if you are normie who uses ubuntu
 
-Now just go into target/build folder and find built executable and put in in the same folder as a DDnet-Server file
+    apt install protobuf-compiler
+and then you can run as any other rust program
