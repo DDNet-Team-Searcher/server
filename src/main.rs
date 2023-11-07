@@ -3,7 +3,7 @@ mod protos;
 mod state;
 
 use anyhow::Result;
-use handlers::{shutdown::shutdown_server, start::start_server};
+use handlers::{info::get_info, shutdown::shutdown_server, start::start_server};
 use protobuf::Message;
 use protos::{
     request::{Action, Request},
@@ -18,6 +18,7 @@ use tokio::{
 };
 
 const ALLOWED_IPS: &[&'static str] = &["127.0.0.1"];
+const MAX_SERVERS: usize = 10;
 
 //HOLY FUCKING MOLLY, this is fine... dont look at all these arc mutexes... please
 async fn proccess(
@@ -56,6 +57,9 @@ async fn proccess(
         let response: Response;
 
         match request.action.unwrap() {
+            Action::INFO => {
+                response = get_info(Arc::clone(&state)).await;
+            }
             Action::START => {
                 response = start_server(
                     Arc::clone(&state),
@@ -86,7 +90,7 @@ async fn proccess(
 async fn main() -> Result<()> {
     //TODO: add logging
     let listener = TcpListener::bind("127.0.0.1:3030").await?;
-    let state = Arc::new(Mutex::new(State::new()));
+    let state = Arc::new(Mutex::new(State::new(MAX_SERVERS)));
     let connected_sockets: Arc<Mutex<HashMap<String, Arc<Mutex<TcpStream>>>>> =
         Arc::new(Mutex::new(HashMap::new()));
 

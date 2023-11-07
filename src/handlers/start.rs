@@ -61,8 +61,8 @@ pub async fn start_server(state: Arc<Mutex<State>>, id: usize, map_name: String)
     guard.add_server(id, child.id().unwrap() as usize).unwrap();
 
     println!(
-        "Started a server on port {} with password {}",
-        port, &password
+        "Started a server on port {} with password {} and map {}",
+        port, &password, map_name
     );
 
     let mut res = Response::new();
