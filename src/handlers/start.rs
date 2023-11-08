@@ -40,12 +40,17 @@ pub async fn start_server(state: Arc<Mutex<State>>, id: usize, map_name: String)
         port, password, map_name,
     );
 
-    let child = match Command::new("./DDNet-Server")
-        .current_dir("../DDnet-Team-Searcher-Server/build")
-        .arg(server_args)
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
+    let child = match Command::new(
+        "./".to_owned()
+            + &std::env::var("DDNET_EXECUTABLE_NAME").expect("DDNET_EXECUTABLE_NAME has to be set"),
+    )
+    .current_dir(
+        std::env::var("DDNET_EXECUTABLE_PATH").expect("DDNET_EXECUTABLE_PATH has to be set"),
+    )
+    .arg(server_args)
+    .stdout(Stdio::null())
+    .stderr(Stdio::null())
+    .spawn()
     {
         Ok(child) => child,
         Err(err) => {

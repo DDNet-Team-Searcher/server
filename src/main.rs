@@ -3,6 +3,7 @@ mod protos;
 mod state;
 
 use anyhow::Result;
+use dotenv::dotenv;
 use handlers::{info::get_info, shutdown::shutdown_server, start::start_server};
 use protobuf::Message;
 use protos::{
@@ -89,6 +90,7 @@ async fn proccess(
 #[tokio::main]
 async fn main() -> Result<()> {
     //TODO: add logging
+    dotenv().ok();
     let listener = TcpListener::bind("127.0.0.1:3030").await?;
     let state = Arc::new(Mutex::new(State::new(MAX_SERVERS)));
     let connected_sockets: Arc<Mutex<HashMap<String, Arc<Mutex<TcpStream>>>>> =
