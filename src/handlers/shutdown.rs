@@ -1,9 +1,7 @@
-use crate::{protos::response::Response, state::State};
+use crate::{protos::response::response::ResponseCode, protos::response::Response, state::State};
 use protobuf::EnumOrUnknown;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-
-use crate::protos::response::ResponseCode;
 
 pub async fn shutdown_server(state: Arc<Mutex<State>>, happening_id: usize) -> Response {
     let mut state = state.lock().await;
@@ -14,6 +12,7 @@ pub async fn shutdown_server(state: Arc<Mutex<State>>, happening_id: usize) -> R
 
     let mut response = Response::new();
     response.response_code = EnumOrUnknown::from(ResponseCode::OK);
+    response.id = Some(happening_id as u32);
 
     return response;
 }

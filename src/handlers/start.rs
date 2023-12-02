@@ -1,5 +1,5 @@
 use crate::{
-    protos::response::{Response, ResponseCode},
+    protos::response::{response::ResponseCode, Response},
     state::State,
 };
 use protobuf::EnumOrUnknown;

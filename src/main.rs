@@ -7,10 +7,7 @@ use anyhow::Result;
 use dotenv::dotenv;
 use handlers::{info::get_info, shutdown::shutdown_server, start::start_server};
 use protobuf::Message;
-use protos::{
-    request::{Action, Request},
-    response::Response,
-};
+use protos::{request::Request, response::Response};
 use state::State;
 use std::{net::SocketAddr, sync::Arc};
 use tokio::{
@@ -18,6 +15,8 @@ use tokio::{
     net::{TcpListener, TcpStream},
     sync::{mpsc, Mutex},
 };
+
+use crate::protos::request::request::Action;
 
 const ALLOWED_IPS: &[&'static str] = &["127.0.0.1"];
 const MAX_SERVERS: usize = 10;
@@ -68,6 +67,9 @@ async fn proccess(mut socket: TcpStream, state: Arc<Mutex<State>>, addr: SocketA
                         }
                         Action::SHUTDOWN => {
                             response = shutdown_server(Arc::clone(&state), request.id as usize).await;
+                        }
+                        Action::UNKNOWN => {
+                            unreachable!();
                         }
                     };
 
