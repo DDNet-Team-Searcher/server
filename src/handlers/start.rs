@@ -28,19 +28,24 @@ fn generate_password(rng: &mut ThreadRng) -> String {
         .collect();
 }
 
-pub async fn start_server(state: Arc<Mutex<State>>, id: usize, map_name: String) -> Response {
+pub async fn start_server(
+    state: Arc<Mutex<State>>,
+    happening_id: usize,
+    map_name: String,
+) -> Response {
     let mut guard = state.lock().await;
     let mut rng = rand::thread_rng();
 
     let port = gimme_port(&guard, &mut rng);
     let password = generate_password(&mut rng);
+    let id = guard.add_server(happening_id, port).unwrap();
 
     let server_args = format!(
-        "sv_port {}; password {}; sv_map {}",
-        port, password, map_name,
+        "sv_id {}; sv_happening_id {}; sv_shutdown_after_finish 1; sv_port {}; password {}; sv_map {}",
+        id, happening_id, port, password, map_name,
     );
 
-    let child = match Command::new(
+    match Command::new(
         "./".to_owned()
             + &std::env::var("DDNET_EXECUTABLE_NAME").expect("DDNET_EXECUTABLE_NAME has to be set"),
     )
@@ -52,7 +57,7 @@ pub async fn start_server(state: Arc<Mutex<State>>, id: usize, map_name: String)
     .stderr(Stdio::null())
     .spawn()
     {
-        Ok(child) => child,
+        Ok(_) => {}
         Err(err) => {
             dbg!(err);
 
@@ -62,8 +67,6 @@ pub async fn start_server(state: Arc<Mutex<State>>, id: usize, map_name: String)
             return response;
         }
     };
-
-    guard.add_server(id, child.id().unwrap() as usize).unwrap();
 
     println!(
         "Started a server on port {} with password {} and map {}",

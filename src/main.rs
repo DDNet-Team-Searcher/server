@@ -1,4 +1,5 @@
 mod handlers;
+mod ipc;
 mod protos;
 mod state;
 
@@ -11,111 +12,97 @@ use protos::{
     response::Response,
 };
 use state::State;
-use std::{collections::HashMap, sync::Arc};
+use std::{net::SocketAddr, sync::Arc};
 use tokio::{
     io::{AsyncReadExt, AsyncWriteExt, BufReader},
     net::{TcpListener, TcpStream},
-    sync::Mutex,
+    sync::{mpsc, Mutex},
 };
 
 const ALLOWED_IPS: &[&'static str] = &["127.0.0.1"];
 const MAX_SERVERS: usize = 10;
 
-//HOLY FUCKING MOLLY, this is fine... dont look at all these arc mutexes... please
-async fn proccess(
-    socket: Arc<Mutex<TcpStream>>,
-    state: Arc<Mutex<State>>,
-    connected_sockets: Arc<Mutex<HashMap<String, Arc<Mutex<TcpStream>>>>>,
-) {
+async fn proccess(mut socket: TcpStream, state: Arc<Mutex<State>>, addr: SocketAddr) {
+    let (tx, mut rx) = mpsc::channel::<Vec<u8>>(512);
+
+    {
+        state.lock().await.add_peer(addr, tx);
+    }
+    println!("Connected");
+
     loop {
-        let mut guard = socket.lock().await;
-        let mut reader = BufReader::new(&mut *guard);
+        let mut reader = BufReader::new(&mut socket);
         let mut buf = [0; 1024];
 
-        let n = reader.read(&mut buf).await.unwrap();
-
-        if n == 0 {
-            //disconnected
-            connected_sockets
-                .lock()
-                .await
-                .remove(&guard.peer_addr().unwrap().to_string());
-
-            break;
-        }
-
-        //dont get dead locked :kekw:
-        drop(guard);
-
-        let request = match Request::parse_from_bytes(&buf[0..n]) {
-            Ok(req) => req,
-            Err(_) => {
-                println!("Stupid bitch cant send right data");
-                break;
+        tokio::select! {
+            Some(msg) = rx.recv() => {
+                socket.write_all(&msg).await.unwrap();
             }
-        };
+            result = reader.read(&mut buf) => match result {
+                Ok(size) => {
+                    if size == 0 {
+                        break;
+                    }
 
-        let response: Response;
+                    let request = match Request::parse_from_bytes(&buf[0..size]) {
+                        Ok(req) => req,
+                        Err(_) => {
+                            println!("Stupid bitch cant send right data");
+                            break;
+                        }
+                    };
 
-        match request.action.unwrap() {
-            Action::INFO => {
-                response = get_info(Arc::clone(&state)).await;
+                    let response: Response;
+
+                    match request.action.unwrap() {
+                        Action::INFO => {
+                            response = get_info(Arc::clone(&state)).await;
+                        }
+                        Action::START => {
+                            response = start_server(
+                                Arc::clone(&state),
+                                request.id as usize,
+                                request.map_name.unwrap(),
+                            )
+                            .await;
+                        }
+                        Action::SHUTDOWN => {
+                            response = shutdown_server(Arc::clone(&state), request.id as usize).await;
+                        }
+                    };
+
+                    state.lock().await.broadcast_msg(response.write_to_bytes().unwrap().to_vec()).await;
+                }
+                Err(err) => {
+                    dbg!(err);
+                    eprintln!("We're fucked");
+                }
             }
-            Action::START => {
-                response = start_server(
-                    Arc::clone(&state),
-                    request.id as usize,
-                    request.map_name.unwrap(),
-                )
-                .await;
-            }
-            Action::SHUTDOWN => {
-                response = shutdown_server(Arc::clone(&state), request.id as usize).await;
-            }
-        };
-
-        let guard = connected_sockets.lock().await;
-
-        for sock in guard.values().into_iter() {
-            let mut socket_guard = sock.lock().await;
-
-            socket_guard
-                .write_all(&response.write_to_bytes().unwrap())
-                .await
-                .unwrap();
         }
     }
+
+    state.lock().await.remove_peer(&addr);
+    println!("User disconnected");
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     //TODO: add logging
     dotenv().ok();
-    let listener = TcpListener::bind("127.0.0.1:3030").await?;
+    let listener = TcpListener::bind("127.0.0.1:42069").await?;
     let state = Arc::new(Mutex::new(State::new(MAX_SERVERS)));
-    let connected_sockets: Arc<Mutex<HashMap<String, Arc<Mutex<TcpStream>>>>> =
-        Arc::new(Mutex::new(HashMap::new()));
 
     loop {
         let (socket, addr) = listener.accept().await?;
-        let socket_arc = Arc::new(Mutex::new(socket));
 
         if !ALLOWED_IPS.contains(&&addr.ip().to_string()[..]) {
             continue;
         }
 
-        {
-            connected_sockets
-                .lock()
-                .await
-                .insert(addr.to_string(), Arc::clone(&socket_arc));
-        }
-
-        let state_arc = Arc::clone(&state);
-        let connected_sockets_arc = Arc::clone(&connected_sockets);
+        let state = Arc::clone(&state);
 
         tokio::spawn(async move {
-            proccess(socket_arc, state_arc, connected_sockets_arc).await;
+            proccess(socket, state.clone(), addr).await;
         });
     }
 }
