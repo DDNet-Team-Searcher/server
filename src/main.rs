@@ -52,7 +52,7 @@ async fn proccess(mut socket: TcpStream, state: Arc<Mutex<State>>, addr: SocketA
                         }
                     };
 
-                    let response: Response;
+                    let mut response: Response;
 
                     match request.action.unwrap() {
                         Action::INFO => {
@@ -70,6 +70,8 @@ async fn proccess(mut socket: TcpStream, state: Arc<Mutex<State>>, addr: SocketA
                             response = shutdown_server(Arc::clone(&state), request.id as usize).await;
                         }
                     };
+
+                    response.origin = request.origin;
 
                     state.lock().await.broadcast_msg(response.write_to_bytes().unwrap().to_vec()).await;
                 }
