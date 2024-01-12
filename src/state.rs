@@ -1,9 +1,7 @@
-use std::{collections::HashMap, hash::Hash, net::SocketAddr};
-
-use anyhow::Result;
-use tokio::sync::mpsc;
-
 use crate::ipc::SharedMemory;
+use anyhow::Result;
+use std::{collections::HashMap, net::SocketAddr};
+use tokio::sync::mpsc;
 
 type Tx = mpsc::Sender<Vec<u8>>;
 type Rx = mpsc::Receiver<Vec<u8>>;
@@ -74,13 +72,6 @@ impl State {
         return Ok(id);
     }
 
-    pub fn get_info(&self) -> Info {
-        return Info {
-            used: self.in_use,
-            max: self.max,
-        };
-    }
-
     pub fn remove_server(&mut self, happening_id: usize) -> Option<usize> {
         for i in 0..self.servers.len() {
             if let Some(server) = self.servers[i] {
@@ -94,6 +85,13 @@ impl State {
         }
 
         return None;
+    }
+
+    pub fn get_info(&self) -> Info {
+        return Info {
+            used: self.in_use,
+            max: self.max,
+        };
     }
 
     pub fn is_port_taken(&self, port: usize) -> bool {

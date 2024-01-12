@@ -1,9 +1,12 @@
+mod config;
 mod handlers;
 mod ipc;
 mod protos;
 mod state;
 
+use crate::protos::request::request::Action;
 use anyhow::Result;
+use config::get_config;
 use dotenv::dotenv;
 use handlers::{info::get_info, shutdown::shutdown_server, start::start_server};
 use protobuf::Message;
@@ -16,18 +19,12 @@ use tokio::{
     sync::{mpsc, Mutex},
 };
 
-use crate::protos::request::request::Action;
-
-const ALLOWED_IPS: &[&'static str] = &["127.0.0.1"];
-const MAX_SERVERS: usize = 10;
-
 async fn proccess(mut socket: TcpStream, state: Arc<Mutex<State>>, addr: SocketAddr) {
     let (tx, mut rx) = mpsc::channel::<Vec<u8>>(512);
 
     {
         state.lock().await.add_peer(addr, tx);
     }
-    println!("Connected");
 
     loop {
         let mut reader = BufReader::new(&mut socket);
@@ -93,13 +90,24 @@ async fn proccess(mut socket: TcpStream, state: Arc<Mutex<State>>, addr: SocketA
 async fn main() -> Result<()> {
     //TODO: add logging
     dotenv().ok();
-    let listener = TcpListener::bind("127.0.0.1:42069").await?;
-    let state = Arc::new(Mutex::new(State::new(MAX_SERVERS)));
+    let config = get_config().expect("Failed to get config");
+    let listener = TcpListener::bind(format!(
+        "{}:{}",
+        config.application.host, config.application.port
+    ))
+    .await?;
+    let state = Arc::new(Mutex::new(State::new(
+        config.application.max_servers as usize,
+    )));
 
     loop {
         let (socket, addr) = listener.accept().await?;
 
-        if !ALLOWED_IPS.contains(&&addr.ip().to_string()[..]) {
+        if !&config
+            .application
+            .allowed_ips
+            .contains(&addr.ip().to_string())
+        {
             continue;
         }
 

@@ -4,7 +4,7 @@ use libc::{
 };
 use std::ptr;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub struct SharedMemory {
     fd: i32,
     addr: *mut c_void,
@@ -15,7 +15,7 @@ unsafe impl Send for SharedMemory {}
 
 impl SharedMemory {
     pub fn new(max: usize) -> Self {
-        const STORAGE_ID: *const c_char = b"/ddts2\0".as_ptr() as *const c_char;
+        const STORAGE_ID: *const c_char = b"/ddts\0".as_ptr() as *const c_char;
 
         let (fd, addr) = unsafe {
             let null = ptr::null_mut();
@@ -38,7 +38,5 @@ impl SharedMemory {
         unsafe {
             memcpy(self.addr.offset(id as isize), data, 1);
         };
-
-        println!("Wrote in shared memory");
     }
 }

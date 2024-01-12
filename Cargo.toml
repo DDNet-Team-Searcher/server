@@ -10,8 +10,10 @@ protobuf-codegen = "3.3.0"
 
 [dependencies]
 anyhow = "1.0.75"
+config = "0.13.4"
 dotenv = "0.15.0"
 libc = "0.2.150"
 protobuf = "3.3.0"
 rand = "0.8.5"
+serde = "1.0.195"
 tokio = { version = "1.33.0", features = ["full"] }

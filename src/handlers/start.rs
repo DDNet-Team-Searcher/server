@@ -73,11 +73,10 @@ pub async fn start_server(
         port, &password, map_name
     );
 
-    let mut res = Response::new();
+    let mut response = Response::new();
+    response.password = Some(password);
+    response.port = Some(port as u32);
+    response.response_code = EnumOrUnknown::from(ResponseCode::OK);
 
-    res.password = Some(password);
-    res.port = Some(port as u32);
-    res.response_code = EnumOrUnknown::from(ResponseCode::OK);
-
-    return res;
+    return response;
 }
