@@ -21,7 +21,7 @@ impl TryFrom<String> for Env {
             "prod" => return Ok(Self::Prod),
             _ => {
                 return Err(format!(
-                    "{} is not supported environment. Use either `dev` or `prod` >~<",
+                    "{} is not supported environment, use either `dev` or `prod` >~<",
                     value
                 ))
             }
@@ -43,12 +43,12 @@ pub struct Config {
 }
 
 pub fn get_config() -> Result<Config, config::ConfigError> {
-    let base_path = std::env::current_dir().expect("Failed to determine current directory");
+    let base_path = std::env::current_dir().expect("failed to determine current directory");
     let configuration_directory = base_path.join("config");
     let environment: Env = std::env::var("ENV")
         .unwrap_or_else(|_| "dev".into())
         .try_into()
-        .expect("Failed to parse ENV");
+        .expect("failed to parse ENV");
 
     let builder = config::Config::builder()
         .add_source(config::File::new(

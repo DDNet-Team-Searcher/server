@@ -28,6 +28,7 @@ fn generate_password(rng: &mut ThreadRng) -> String {
         .collect();
 }
 
+#[tracing::instrument(name = "start server", skip(state, happening_id, map_name))]
 pub async fn start_server(
     state: Arc<Mutex<State>>,
     happening_id: usize,
@@ -59,7 +60,7 @@ pub async fn start_server(
     {
         Ok(_) => {}
         Err(err) => {
-            dbg!(err);
+            tracing::error!("failed to spawn ddnet server process: {:?}", err);
 
             let mut response = Response::new();
             response.response_code = EnumOrUnknown::from(ResponseCode::WHOOPSIE_DAISY);
@@ -68,9 +69,11 @@ pub async fn start_server(
         }
     };
 
-    println!(
-        "Started a server on port {} with password {} and map {}",
-        port, &password, map_name
+    tracing::info!(
+        "started game server on port {} with password {} and map {}",
+        port,
+        password,
+        map_name
     );
 
     let mut response = Response::new();
