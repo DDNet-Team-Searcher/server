@@ -1,4 +1,8 @@
-use crate::{protos::response::response::ResponseCode, protos::response::Response, state::State};
+use crate::{
+    protos::response::response::ResponseCode,
+    protos::response::{Response, Shutdown},
+    state::State,
+};
 use protobuf::EnumOrUnknown;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -11,9 +15,12 @@ pub async fn shutdown_server(state: Arc<Mutex<State>>, happening_id: usize) -> R
 
     tracing::info!("cloased server with id {}", id);
 
+    let mut response_shutdown = Shutdown::new();
+    response_shutdown.id = Some(happening_id as u32);
+
     let mut response = Response::new();
-    response.response_code = EnumOrUnknown::from(ResponseCode::OK);
-    response.id = Some(happening_id as u32);
+    response.code = EnumOrUnknown::from(ResponseCode::OK);
+    response.set_shutdown(response_shutdown);
 
     return response;
 }

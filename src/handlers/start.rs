@@ -1,5 +1,5 @@
 use crate::{
-    protos::response::{response::ResponseCode, Response},
+    protos::response::{response::ResponseCode, Response, Start},
     state::State,
 };
 use protobuf::EnumOrUnknown;
@@ -63,7 +63,7 @@ pub async fn start_server(
             tracing::error!("failed to spawn ddnet server process: {:?}", err);
 
             let mut response = Response::new();
-            response.response_code = EnumOrUnknown::from(ResponseCode::WHOOPSIE_DAISY);
+            response.code = EnumOrUnknown::from(ResponseCode::WHOOPSIE_DAISY);
 
             return response;
         }
@@ -76,10 +76,13 @@ pub async fn start_server(
         map_name
     );
 
+    let mut response_start = Start::new();
+    response_start.password = Some(password);
+    response_start.port = Some(port as u32);
+
     let mut response = Response::new();
-    response.password = Some(password);
-    response.port = Some(port as u32);
-    response.response_code = EnumOrUnknown::from(ResponseCode::OK);
+    response.code = EnumOrUnknown::from(ResponseCode::OK);
+    response.set_start(response_start);
 
     return response;
 }
