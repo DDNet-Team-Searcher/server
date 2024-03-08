@@ -1,4 +1,4 @@
 [submodule "packages/server/protos"]
-    path = packages/server/protos
+    path = protos
     url = https://github.com/DDNet-Team-Searcher/protos.git
 
