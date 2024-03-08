@@ -1,3 +1,4 @@
-[submodule "protos"]
-	path = protos
-	url = git@github.com:DDNet-Team-Searcher/protos.git
+[submodule "packages/server/protos"]
+    path = packages/server/protos
+    url = https://github.com/DDNet-Team-Searcher/protos.git
+
