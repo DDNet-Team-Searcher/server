@@ -11,8 +11,8 @@ pub async fn get_info(state: Arc<Mutex<State>>) -> Response {
     let info = state.lock().await.get_info();
 
     let mut response_info = crate::protos::response::Info::new();
-    response_info.used = Some(info.used as u32);
-    response_info.max = Some(info.max as u32);
+    response_info.used = info.used as u32;
+    response_info.max = info.max as u32;
 
     let mut response = Response::new();
     response.code = EnumOrUnknown::from(ResponseCode::OK);

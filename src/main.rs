@@ -61,7 +61,7 @@ async fn proccess(mut socket: TcpStream, state: Arc<Mutex<State>>, addr: SocketA
                             response = start_server(
                                 Arc::clone(&state),
                                 request.id as usize,
-                                request.map_name.unwrap(),
+                                request.map_name,
                             )
                             .await;
                         }

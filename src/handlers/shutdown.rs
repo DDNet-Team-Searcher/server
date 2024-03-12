@@ -16,7 +16,7 @@ pub async fn shutdown_server(state: Arc<Mutex<State>>, happening_id: usize) -> R
     tracing::info!("cloased server with id {}", id);
 
     let mut response_shutdown = Shutdown::new();
-    response_shutdown.id = Some(happening_id as u32);
+    response_shutdown.id = happening_id as u32;
 
     let mut response = Response::new();
     response.code = EnumOrUnknown::from(ResponseCode::OK);

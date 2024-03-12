@@ -77,8 +77,8 @@ pub async fn start_server(
     );
 
     let mut response_start = Start::new();
-    response_start.password = Some(password);
-    response_start.port = Some(port as u32);
+    response_start.password = password;
+    response_start.port = port as u32;
 
     let mut response = Response::new();
     response.code = EnumOrUnknown::from(ResponseCode::OK);
