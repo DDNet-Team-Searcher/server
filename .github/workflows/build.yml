@@ -22,11 +22,17 @@ jobs:
             rust: nightly
     steps:
       - uses: actions/checkout@v2
-      - run: cargo build --release
+      - run: |
+          sudo apt-get update -y
+          sudo apt-get install protobuf-compiler -y
+          cargo build --release
 
   check-rustfmt:
     name: Check that everything is rustfmtted
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - run: cargo fmt --check
+      - run: |
+          # gotta run build because it has to generate proto files to check correctly
+          cargo build
+          cargo fmt --check
