@@ -8,9 +8,9 @@ use rand::prelude::*;
 use std::{ops::Range, process::Stdio, sync::Arc};
 use tokio::{process::Command, sync::Mutex};
 
-const PORTS_RANGE: Range<usize> = 2000..3000;
+const PORTS_RANGE: Range<u16> = 2000..3000;
 
-fn gimme_port(state: &State, rng: &mut ThreadRng) -> usize {
+fn gimme_port(state: &State, rng: &mut ThreadRng) -> u16 {
     let rand = rng.gen_range(PORTS_RANGE);
 
     if state.is_port_taken(rand) {
@@ -39,7 +39,7 @@ pub async fn start_server(
 
     let port = gimme_port(&guard, &mut rng);
     let password = generate_password(&mut rng);
-    let id = guard.add_server(happening_id, port).unwrap();
+    let id = guard.empty_index().expect("whoopsie daisy fix me pls owo");
 
     let server_args = format!(
         "sv_id {}; sv_happening_id {}; sv_shutdown_after_finish 1; sv_port {}; password {}; sv_map {}",
@@ -58,7 +58,33 @@ pub async fn start_server(
     .stderr(Stdio::null())
     .spawn()
     {
-        Ok(_) => {}
+        Ok(child) => {
+            guard.add_server(
+                id,
+                happening_id,
+                port,
+                child.id().expect("failed to get ddnet server pid"),
+                password.clone(),
+                map_name.clone(),
+            );
+
+            tracing::info!(
+                "started game server on port {} with password {} and map {}",
+                port,
+                password,
+                map_name
+            );
+
+            let mut response_start = Start::new();
+            response_start.password = password;
+            response_start.port = port as u32;
+
+            let mut response = Response::new();
+            response.code = EnumOrUnknown::from(ResponseCode::OK);
+            response.set_start(response_start);
+
+            return response;
+        }
         Err(err) => {
             tracing::error!("failed to spawn ddnet server process: {:?}", err);
 
@@ -68,21 +94,4 @@ pub async fn start_server(
             return response;
         }
     };
-
-    tracing::info!(
-        "started game server on port {} with password {} and map {}",
-        port,
-        password,
-        map_name
-    );
-
-    let mut response_start = Start::new();
-    response_start.password = password;
-    response_start.port = port as u32;
-
-    let mut response = Response::new();
-    response.code = EnumOrUnknown::from(ResponseCode::OK);
-    response.set_start(response_start);
-
-    return response;
 }

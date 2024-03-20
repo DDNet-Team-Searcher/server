@@ -6,7 +6,6 @@ use std::ptr;
 
 #[derive(Debug)]
 pub struct SharedMemory {
-    fd: i32,
     addr: *mut c_void,
 }
 
@@ -17,7 +16,7 @@ impl SharedMemory {
     pub fn new(max: usize) -> Self {
         const STORAGE_ID: *const c_char = b"/ddts\0".as_ptr() as *const c_char;
 
-        let (fd, addr) = unsafe {
+        let (_, addr) = unsafe {
             let null = ptr::null_mut();
             let fd = shm_open(STORAGE_ID, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR | S_IXUSR);
 
@@ -28,7 +27,7 @@ impl SharedMemory {
             (fd, addr)
         };
 
-        return Self { fd, addr };
+        return Self { addr };
     }
 
     pub fn shutdown_server(&self, id: u32) {

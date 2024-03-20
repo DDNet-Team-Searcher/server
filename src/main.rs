@@ -5,7 +5,7 @@ mod protos;
 mod state;
 mod telemetry;
 
-use crate::protos::request::request::Action;
+use crate::{handlers::stats, protos::request::request::Action};
 use anyhow::Result;
 use config::get_config;
 use dotenv::dotenv;
@@ -68,6 +68,9 @@ async fn proccess(mut socket: TcpStream, state: Arc<Mutex<State>>, addr: SocketA
                         Action::SHUTDOWN => {
                             response = shutdown_server(Arc::clone(&state), request.id as usize).await;
                         }
+                        Action::STATS=> {
+                            response = stats(Arc::clone(&state)).await;
+                        }
                         Action::UNKNOWN => {
                             tracing::debug_span!("got request with unkown action", ?request);
                             break;
@@ -107,7 +110,7 @@ async fn main() -> Result<()> {
     ))
     .await?;
     let state = Arc::new(Mutex::new(State::new(
-        config.application.max_servers as usize,
+        config.application.max_servers as u32,
     )));
 
     loop {

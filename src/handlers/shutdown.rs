@@ -13,7 +13,7 @@ pub async fn shutdown_server(state: Arc<Mutex<State>>, happening_id: usize) -> R
     let id = state.remove_server(happening_id).unwrap();
     state.shared_memory.shutdown_server(id as u32);
 
-    tracing::info!("cloased server with id {}", id);
+    tracing::info!("closed server with id {}", id);
 
     let mut response_shutdown = Shutdown::new();
     response_shutdown.id = happening_id as u32;
