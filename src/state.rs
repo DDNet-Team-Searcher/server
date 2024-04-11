@@ -1,14 +1,12 @@
 use crate::ipc::SharedMemory;
 use crate::protos::response::response::ResponseCode;
 use crate::protos::{response, response::Response};
-use anyhow::Result;
 use protobuf::{EnumOrUnknown, MessageField};
 use std::{collections::HashMap, net::SocketAddr};
 use sysinfo::System;
 use tokio::sync::mpsc;
 
 type Tx = mpsc::Sender<Vec<u8>>;
-type Rx = mpsc::Receiver<Vec<u8>>;
 
 pub struct Info {
     pub used: u32,

@@ -7,7 +7,7 @@ use protobuf::EnumOrUnknown;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-#[tracing::instrument(name = "shutdown server", skip(state, happening_id))]
+#[tracing::instrument(name = "shutdown server", skip(state))]
 pub async fn shutdown_server(state: Arc<Mutex<State>>, happening_id: usize) -> Response {
     let mut state = state.lock().await;
     let id = state.remove_server(happening_id).unwrap();

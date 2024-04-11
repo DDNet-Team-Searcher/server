@@ -28,7 +28,7 @@ fn generate_password(rng: &mut ThreadRng) -> String {
         .collect();
 }
 
-#[tracing::instrument(name = "start server", skip(state, happening_id, map_name))]
+#[tracing::instrument(name = "start server", skip(state))]
 pub async fn start_server(
     state: Arc<Mutex<State>>,
     happening_id: usize,
