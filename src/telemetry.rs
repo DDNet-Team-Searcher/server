@@ -3,7 +3,7 @@ use tracing_bunyan_formatter::{BunyanFormattingLayer, JsonStorageLayer};
 use tracing_log::LogTracer;
 use tracing_subscriber::{fmt::MakeWriter, layer::SubscriberExt, EnvFilter, Registry};
 
-pub fn get_subscriber<Sink>(name: String, env_filter: String, sink: Sink) -> impl Subscriber
+pub fn get_subscriber<Sink>(name: String, env_filter: &str, sink: Sink) -> impl Subscriber
 where
     Sink: for<'a> MakeWriter<'a> + Send + Sync + 'static,
 {

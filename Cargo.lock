@@ -206,7 +206,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ddnet_hander_server_v2"
+name = "ddts_server"
 version = "0.1.0"
 dependencies = [
  "anyhow",

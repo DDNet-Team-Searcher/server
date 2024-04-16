@@ -1,5 +1,5 @@
 [package]
-name = "ddnet_hander_server_v2"
+name = "ddts_server"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,6 +7,13 @@ edition = "2021"
 
 [build-dependencies]
 protobuf-codegen = "3.3.0"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+path = "src/main.rs"
+name="server"
 
 [dependencies]
 anyhow = "1.0.75"
