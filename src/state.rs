@@ -1,7 +1,6 @@
 use crate::ipc::SharedMemory;
 use crate::protos::response::response::ResponseCode;
 use crate::protos::{response, response::Response};
-use protobuf::{EnumOrUnknown, MessageField};
 use std::{collections::HashMap, net::SocketAddr};
 use sysinfo::System;
 use tokio::sync::mpsc;
@@ -21,7 +20,7 @@ impl Into<Response> for Info {
 
         let mut response = Response::new();
         response.set_info(response_info);
-        response.code = EnumOrUnknown::from(ResponseCode::OK);
+        response.code = ResponseCode::OK.into();
 
         return response;
     }
@@ -74,12 +73,12 @@ impl Into<Response> for Stats {
     fn into(self) -> Response {
         let mut stats = response::Stats::new();
 
-        stats.system = MessageField::from(Some(self.system.into()));
+        stats.system = Some(self.system.into()).into();
         stats.happenings = self.happenings.into_iter().map(|h| h.into()).collect();
 
         let mut response = response::Response::new();
         response.set_stats(stats);
-        response.code = EnumOrUnknown::from(ResponseCode::OK);
+        response.code = ResponseCode::OK.into();
 
         return response;
     }

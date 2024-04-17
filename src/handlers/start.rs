@@ -2,7 +2,6 @@ use crate::{
     protos::response::{response::ResponseCode, Response, Start},
     state::State,
 };
-use protobuf::EnumOrUnknown;
 use rand::distributions::Alphanumeric;
 use rand::prelude::*;
 use std::{ops::Range, process::Stdio, sync::Arc};
@@ -85,7 +84,7 @@ pub async fn start_server(
             response_start.port = port as u32;
 
             let mut response = Response::new();
-            response.code = EnumOrUnknown::from(ResponseCode::OK);
+            response.code = ResponseCode::OK.into();
             response.set_start(response_start);
 
             return response;
@@ -94,7 +93,7 @@ pub async fn start_server(
             tracing::error!("failed to spawn ddnet server process: {:?}", err);
 
             let mut response = Response::new();
-            response.code = EnumOrUnknown::from(ResponseCode::WHOOPSIE_DAISY);
+            response.code = ResponseCode::WHOOPSIE_DAISY.into();
 
             return response;
         }

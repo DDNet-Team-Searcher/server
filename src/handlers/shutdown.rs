@@ -3,7 +3,6 @@ use crate::{
     protos::response::{Response, Shutdown},
     state::State,
 };
-use protobuf::EnumOrUnknown;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -19,7 +18,7 @@ pub async fn shutdown_server(state: Arc<Mutex<State>>, happening_id: usize) -> R
     response_shutdown.id = happening_id as u32;
 
     let mut response = Response::new();
-    response.code = EnumOrUnknown::from(ResponseCode::OK);
+    response.code = ResponseCode::OK.into();
     response.set_shutdown(response_shutdown);
 
     return response;
