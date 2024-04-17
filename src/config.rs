@@ -29,7 +29,7 @@ impl TryFrom<String> for Env {
     }
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, Clone)]
 pub struct ApplicationConfig {
     pub host: String,
     pub port: u16,
@@ -37,7 +37,7 @@ pub struct ApplicationConfig {
     pub max_servers: u8,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, Clone)]
 pub struct Config {
     pub application: ApplicationConfig,
 }

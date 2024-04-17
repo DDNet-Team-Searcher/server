@@ -40,10 +40,15 @@ pub async fn start_server(
     let port = gimme_port(&guard, &mut rng);
     let password = generate_password(&mut rng);
     let id = guard.empty_index().expect("whoopsie daisy fix me pls owo");
+    let logfile = format!(
+        "./logs/{}_{}.log",
+        chrono::Utc::now().to_rfc3339(),
+        happening_id
+    );
 
     let server_args = format!(
-        "sv_id {}; sv_happening_id {}; sv_shutdown_after_finish 1; sv_port {}; password {}; sv_map {}",
-        id, happening_id, port, password, map_name,
+        "sv_id {}; sv_happening_id {}; sv_shutdown_after_finish 1; sv_port {}; password {}; sv_map {}; logfile {}",
+        id, happening_id, port, password, map_name, logfile
     );
 
     match Command::new(
