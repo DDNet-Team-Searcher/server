@@ -1,6 +1,6 @@
 use libc::{
-    c_char, c_void, ftruncate, memcpy, mmap, off_t, shm_open, MAP_SHARED, O_CREAT, O_RDWR,
-    PROT_READ, PROT_WRITE, S_IRUSR, S_IWUSR, S_IXUSR,
+    c_char, c_void, ftruncate, mmap, off_t, shm_open, MAP_SHARED, O_CREAT, O_RDWR, PROT_READ,
+    PROT_WRITE, S_IRUSR, S_IWUSR, S_IXUSR,
 };
 use std::ptr;
 
@@ -31,11 +31,8 @@ impl SharedMemory {
     }
 
     pub fn shutdown_server(&self, id: u32) {
-        let val: u8 = 1;
-        let data = &val as *const u8 as *const c_void;
-
         unsafe {
-            memcpy(self.addr.offset(id as isize), data, 1);
+            *(self.addr.offset(id as isize) as *mut u8) = 1;
         };
     }
 }
