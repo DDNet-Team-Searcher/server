@@ -4,7 +4,5 @@ use tokio::sync::Mutex;
 
 #[tracing::instrument("get server stats", skip_all)]
 pub async fn stats(state: Arc<Mutex<State>>) -> Response {
-    let stats = state.lock().await.stats();
-
-    return stats.into();
+    state.lock().await.stats().into()
 }

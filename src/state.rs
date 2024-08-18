@@ -1,8 +1,9 @@
-use crate::ipc::SharedMemory;
-use crate::protos::response::response::ResponseCode;
+use crate::protos::response::response::{Data, ResponseCode};
 use crate::protos::{response, response::Response};
+use std::path::Path;
 use std::{collections::HashMap, net::SocketAddr};
 use sysinfo::System;
+use tokio::io::AsyncWriteExt;
 use tokio::sync::mpsc;
 
 type Tx = mpsc::Sender<Vec<u8>>;
@@ -14,15 +15,17 @@ pub struct Info {
 
 impl Into<Response> for Info {
     fn into(self) -> Response {
-        let mut response_info = response::Info::new();
-        response_info.used = self.used;
-        response_info.max = self.max;
+        let info = response::Info {
+            used: self.used,
+            max: self.max,
+            ..Default::default()
+        };
 
-        let mut response = Response::new();
-        response.set_info(response_info);
-        response.code = ResponseCode::OK.into();
-
-        return response;
+        Response {
+            code: ResponseCode::OK.into(),
+            data: Some(Data::Info(info)),
+            ..Default::default()
+        }
     }
 }
 
@@ -34,13 +37,12 @@ struct SystemStats {
 
 impl Into<response::stats::System> for SystemStats {
     fn into(self) -> response::stats::System {
-        let mut system = response::stats::System::new();
-
-        system.total_memory = self.total_memory;
-        system.load = self.load;
-        system.free_memory = self.free_memory;
-
-        return system;
+        response::stats::System {
+            total_memory: self.total_memory,
+            load: self.load,
+            free_memory: self.free_memory,
+            ..Default::default()
+        }
     }
 }
 
@@ -53,14 +55,13 @@ struct SystemHappening {
 
 impl Into<response::stats::Happening> for SystemHappening {
     fn into(self) -> response::stats::Happening {
-        let mut happening = response::stats::Happening::new();
-
-        happening.port = self.port as u32;
-        happening.pid = self.pid;
-        happening.map_name = self.map_name;
-        happening.password = self.password;
-
-        return happening;
+        response::stats::Happening {
+            port: self.port as u32,
+            pid: self.pid,
+            map_name: self.map_name,
+            password: self.password,
+            ..Default::default()
+        }
     }
 }
 
@@ -71,31 +72,39 @@ pub struct Stats {
 
 impl Into<Response> for Stats {
     fn into(self) -> Response {
-        let mut stats = response::Stats::new();
+        let stats = response::Stats {
+            system: Some(self.system.into()).into(),
+            happenings: self.happenings.into_iter().map(|h| h.into()).collect(),
+            ..Default::default()
+        };
 
-        stats.system = Some(self.system.into()).into();
-        stats.happenings = self.happenings.into_iter().map(|h| h.into()).collect();
-
-        let mut response = response::Response::new();
-        response.set_stats(stats);
-        response.code = ResponseCode::OK.into();
-
-        return response;
+        response::Response {
+            data: Some(Data::Stats(stats)),
+            code: ResponseCode::OK.into(),
+            ..Default::default()
+        }
     }
 }
 
-#[derive(Debug, Clone)]
-struct Server {
-    port: u16,
-    happening_id: usize,
-    map_name: String,
-    pid: u32,
-    password: String,
+#[derive(Debug)]
+pub struct Server {
+    pub port: u16,
+    pub happening_id: usize,
+    pub map_name: String,
+    pub pid: u32,
+    pub password: String,
+    fifo: tokio::fs::File,
+}
+
+impl Server {
+    pub async fn shutdown(&mut self) {
+        //self.fifo.write_all(b"shutdown \"reason\"").await.unwrap();
+        self.fifo.write_all(b"shutdown Foo").await.unwrap();
+    }
 }
 
 #[derive(Debug)]
 pub struct State {
-    pub shared_memory: SharedMemory,
     peers: HashMap<SocketAddr, Tx>,
     servers: Vec<Option<Server>>,
     sys: System,
@@ -105,18 +114,13 @@ pub struct State {
 
 impl State {
     pub fn new(max: u32) -> Self {
-        let mut servers = Vec::with_capacity(max as usize);
-        let sys = System::new_all();
-        servers.resize(max as usize, None);
-
-        return Self {
-            servers,
-            shared_memory: SharedMemory::new(max as usize),
+        Self {
+            servers: Vec::from_iter((0..max).map(|_| None)),
             peers: HashMap::new(),
-            sys,
+            sys: System::new_all(),
             max,
             in_use: 0,
-        };
+        }
     }
 
     pub async fn broadcast_msg(&mut self, msg: Vec<u8>) {
@@ -134,15 +138,14 @@ impl State {
     }
 
     pub fn empty_index(&mut self) -> Option<usize> {
-        return self
-            .servers
+        self.servers
             .iter()
             .enumerate()
             .find(|(_, srv)| srv.is_none())
-            .map(|(i, _)| i);
+            .map(|(i, _)| i)
     }
 
-    pub fn add_server(
+    pub async fn add_server(
         &mut self,
         id: usize,
         happening_id: usize,
@@ -150,38 +153,43 @@ impl State {
         pid: u32,
         password: String,
         map_name: String,
+        fifo_path: &Path,
     ) {
+        let fifo = tokio::fs::File::create(fifo_path).await.unwrap();
+
         self.servers[id] = Some(Server {
             happening_id,
             port,
             pid,
             password,
             map_name,
+            fifo,
         });
-
         self.in_use += 1;
     }
 
-    pub fn remove_server(&mut self, happening_id: usize) -> Option<usize> {
+    pub fn remove_server(&mut self, happening_id: usize) -> Option<Server> {
         for i in 0..self.servers.len() {
             if let Some(server) = &self.servers[i] {
                 if server.happening_id == happening_id {
+                    let server = std::mem::take(&mut self.servers[i]).unwrap();
+
                     self.servers[i] = None;
                     self.in_use -= 1;
 
-                    return Some(i);
+                    return Some(server);
                 }
             }
         }
 
-        return None;
+        None
     }
 
     pub fn get_info(&self) -> Info {
-        return Info {
+        Info {
             used: self.in_use,
             max: self.max,
-        };
+        }
     }
 
     pub fn stats(&mut self) -> Stats {
@@ -194,10 +202,9 @@ impl State {
         };
         let happenings: Vec<SystemHappening> = self
             .servers
-            .clone()
-            .into_iter()
+            .iter()
             .filter(|srv| srv.is_some())
-            .map(|srv| srv.unwrap())
+            .map(|srv| srv.as_ref().unwrap())
             .map(|srv| SystemHappening {
                 pid: srv.pid,
                 port: srv.port,
@@ -206,7 +213,7 @@ impl State {
             })
             .collect();
 
-        return Stats { system, happenings };
+        Stats { system, happenings }
     }
 
     pub fn is_port_taken(&self, port: u16) -> bool {
@@ -218,6 +225,6 @@ impl State {
             }
         }
 
-        return false;
+        false
     }
 }

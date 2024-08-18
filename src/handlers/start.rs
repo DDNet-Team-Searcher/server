@@ -1,30 +1,33 @@
 use crate::{
-    protos::response::{response::ResponseCode, Response, Start},
+    protos::response::{
+        response::{Data, ResponseCode},
+        Response, Start,
+    },
     state::State,
 };
 use rand::distributions::Alphanumeric;
 use rand::prelude::*;
-use std::{ops::Range, process::Stdio, sync::Arc};
+use std::{ops::Range, path::PathBuf, process::Stdio, sync::Arc};
 use tokio::{process::Command, sync::Mutex};
 
 const PORTS_RANGE: Range<u16> = 2000..3000;
 
-fn gimme_port(state: &State, rng: &mut ThreadRng) -> u16 {
-    let rand = rng.gen_range(PORTS_RANGE);
+fn gimme_port(state: &State) -> u16 {
+    let port = rand::thread_rng().gen_range(PORTS_RANGE);
 
-    if state.is_port_taken(rand) {
-        return gimme_port(state, rng);
+    if state.is_port_taken(port) {
+        gimme_port(state)
+    } else {
+        port
     }
-
-    return rand;
 }
 
-fn generate_password(rng: &mut ThreadRng) -> String {
-    return rng
+fn generate_password() -> String {
+    rand::thread_rng()
         .sample_iter(&Alphanumeric)
         .take(20)
         .map(char::from)
-        .collect();
+        .collect()
 }
 
 #[tracing::instrument(name = "start server", skip(state))]
@@ -34,44 +37,47 @@ pub async fn start_server(
     map_name: String,
 ) -> Response {
     let mut guard = state.lock().await;
-    let mut rng = rand::thread_rng();
-
-    let port = gimme_port(&guard, &mut rng);
-    let password = generate_password(&mut rng);
+    let port = gimme_port(&guard);
+    let password = generate_password();
     let id = guard.empty_index().expect("whoopsie daisy fix me pls owo");
     let logfile = format!(
         "./logs/{}_{}.log",
         chrono::Utc::now().to_rfc3339(),
         happening_id
     );
-
-    let server_args = format!(
-        "sv_id {}; sv_happening_id {}; sv_shutdown_after_finish 1; sv_port {}; password {}; sv_map {}; logfile {}",
-        id, happening_id, port, password, map_name, logfile
-    );
-
-    match Command::new(
-        "./".to_owned()
-            + &std::env::var("DDNET_EXECUTABLE_NAME").expect("DDNET_EXECUTABLE_NAME has to be set"),
-    )
-    .current_dir(
+    let fifo = format!("{id}.fifo");
+    let ddnet_server_path = PathBuf::from(
         std::env::var("DDNET_EXECUTABLE_PATH").expect("DDNET_EXECUTABLE_PATH has to be set"),
-    )
+    );
+    let server_args = format!("sv_id {id}; sv_happening_id {happening_id}; sv_shutdown_after_finish 1; sv_port {port}; password {password}; sv_map {map_name}; logfile {logfile}; sv_input_fifo {fifo}");
+
+    match Command::new(format!(
+        "./{}",
+        std::env::var("DDNET_EXECUTABLE_NAME").expect("DDNET_EXECUTABLE_NAME has to be set")
+    ))
+    .current_dir(&ddnet_server_path)
     .arg(server_args)
     .stdout(Stdio::null())
     .stderr(Stdio::null())
     .spawn()
     {
         Ok(child) => {
-            guard.add_server(
-                id,
-                happening_id,
-                port,
-                child.id().expect("failed to get ddnet server pid"),
-                password.clone(),
-                map_name.clone(),
-            );
+            //NOTE: sleep 500ms to let ddnet server create fifo file
+            std::thread::sleep(std::time::Duration::from_millis(500));
+            let mut fifo_path = ddnet_server_path;
+            fifo_path.push(fifo);
 
+            guard
+                .add_server(
+                    id,
+                    happening_id,
+                    port,
+                    child.id().expect("failed to get ddnet server pid"),
+                    password.clone(),
+                    map_name.clone(),
+                    &fifo_path,
+                )
+                .await;
             tracing::info!(
                 "started game server on port {} with password {} and map {}",
                 port,
@@ -79,23 +85,25 @@ pub async fn start_server(
                 map_name
             );
 
-            let mut response_start = Start::new();
-            response_start.password = password;
-            response_start.port = port as u32;
+            let data = Start {
+                password,
+                port: port as u32,
+                ..Default::default()
+            };
 
-            let mut response = Response::new();
-            response.code = ResponseCode::OK.into();
-            response.set_start(response_start);
-
-            return response;
+            Response {
+                code: ResponseCode::OK.into(),
+                data: Some(Data::Start(data)),
+                ..Default::default()
+            }
         }
         Err(err) => {
             tracing::error!("failed to spawn ddnet server process: {:?}", err);
 
-            let mut response = Response::new();
-            response.code = ResponseCode::WHOOPSIE_DAISY.into();
-
-            return response;
+            Response {
+                code: ResponseCode::WHOOPSIE_DAISY.into(),
+                ..Default::default()
+            }
         }
-    };
+    }
 }

@@ -5,10 +5,10 @@ enum Env {
 
 impl Env {
     pub fn as_str(&self) -> &str {
-        return match self {
+        match self {
             Self::Dev => "dev",
             Self::Prod => "prod",
-        };
+        }
     }
 }
 
@@ -17,14 +17,12 @@ impl TryFrom<String> for Env {
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
         match value.to_lowercase().as_str() {
-            "dev" => return Ok(Self::Dev),
-            "prod" => return Ok(Self::Prod),
-            _ => {
-                return Err(format!(
-                    "{} is not supported environment, use either `dev` or `prod` >~<",
-                    value
-                ))
-            }
+            "dev" => Ok(Self::Dev),
+            "prod" => Ok(Self::Prod),
+            _ => Err(format!(
+                "{} is not supported environment, use either `dev` or `prod` >~<",
+                value
+            )),
         }
     }
 }
@@ -65,5 +63,5 @@ pub fn get_config() -> Result<Config, config::ConfigError> {
         .build()
         .unwrap();
 
-    return builder.try_deserialize();
+    builder.try_deserialize()
 }
