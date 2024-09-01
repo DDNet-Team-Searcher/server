@@ -1,10 +1,11 @@
 use crate::{
     protos::response::{
         response::{Data, ResponseCode},
-        Response, Start,
+        Response, Shutdown, Start,
     },
     state::State,
 };
+use protobuf::Message;
 use rand::distributions::Alphanumeric;
 use rand::prelude::*;
 use std::{ops::Range, path::PathBuf, process::Stdio, sync::Arc};
@@ -61,7 +62,7 @@ pub async fn start_server(
     .stderr(Stdio::null())
     .spawn()
     {
-        Ok(child) => {
+        Ok(mut child) => {
             //NOTE: sleep 500ms to let ddnet server create fifo file
             std::thread::sleep(std::time::Duration::from_millis(500));
             let mut fifo_path = ddnet_server_path;
@@ -84,6 +85,26 @@ pub async fn start_server(
                 password,
                 map_name
             );
+
+            let state = Arc::clone(&state);
+            tokio::spawn(async move {
+                let code = child.wait().await.unwrap();
+                let response = Response {
+                    code: ResponseCode::OK.into(),
+                    data: Some(Data::Shutdown(Shutdown {
+                        id: happening_id as u32,
+                        ..Default::default()
+                    })),
+                    ..Default::default()
+                };
+
+                tracing::debug!("Server for happening {happening_id} exited with code {code}");
+                state
+                    .lock()
+                    .await
+                    .broadcast_msg(response.write_to_bytes().unwrap())
+                    .await;
+            });
 
             let data = Start {
                 password,
